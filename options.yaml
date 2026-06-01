@@ -1,0 +1,53 @@
+seed: 1234
+experiment_dir: experiments/hdi_prnet_x2
+
+model:
+  in_channels: 3
+  stages: 2              # Paper ablation favors 2-stage high-order restoration.
+  scale: 2               # Use 2, 3, or 4.
+  denoise_channels: [120, 140, 160]
+  denoise_rcab_blocks: 2
+  sr_hidden_channels: 64
+  deblur_channels: 64
+  neumann_terms: 5       # Paper ablation favors 5 Neumann terms.
+
+data:
+  train_root: D:/datasets/AID_or_WHU_Building/train
+  # 新增部分：真实退化图像路径（无配对 HR，仅用其 LR）
+  real_root: D:/datasets/real_degraded_images
+  val_root: D:/datasets/WHU-RS19/val
+  test_root: D:/datasets/WHU-RS19/test
+  crop_size: 128         # For x2: HR crop 128 gives LR about 64.
+  val_crop_size: 256
+  degradation_orders: 2
+  train_limit: null
+  val_limit: null
+  test_limit: null
+
+train:
+  batch_size: 8          # Paper uses 32 on A100; reduce if memory is insufficient.
+  num_workers: 4
+  total_iters: 200000
+  lr: 0.0002
+  betas: [0.9, 0.99]
+  milestones: [20000, 120000, 160000, 180000]
+  intermediate_loss_weight: 1.0
+  amp: true
+  grad_clip: 0
+  log_every: 100
+  val_every: 5000
+  save_every: 5000
+
+  # ---- 新增部分：UDA + GAN 训练超参数 ----
+  lambda_rec: 1.0            # 重建损失权重（L1）
+  lambda_int: 1.0            # 中间监督损失权重
+  lambda_dom: 0.01           # 域对齐损失权重（GRL + BCE）
+  lambda_gan: 0.001          # 对抗损失权重（PatchGAN + BCE）
+  lr_disc: 0.0002            # 判别器学习率（通常与生成器一致或略小）
+  patch_gan_layers: 3        # PatchGAN 判别器层数（3 → 感受野 ~70×70）
+  patch_gan_base_ch: 64      # PatchGAN 基础通道数
+  domain_disc_hidden: 256    # 域判别器隐藏层通道数
+
+test:
+  num_workers: 2
+  save_lr_hr: true
